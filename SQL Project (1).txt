@@ -1,0 +1,174 @@
+set 1 - Question 1:
+
+SELECT
+   f.title as film_title,
+   c.name as category_name,
+   COUNT(r.rental_id) as rental_count 
+FROM
+   rental r,
+   inventory i,
+   film f 
+   JOIN
+      film_category fc 
+      ON fc.film_id = f.film_id 
+   JOIN
+      category c 
+      ON c.category_id = fc.category_id 
+WHERE
+   f.film_id = i.film_id 
+   AND r.inventory_id = i.inventory_id 
+   AND fc.category_id in
+   (
+      '2',
+      '3',
+      '4',
+      '5',
+      '8',
+      '12'
+   )
+GROUP BY
+   f.title,
+   c.name 
+ORDER BY
+   c.name ASC
+______________________________________________________________________________________________
+
+Set 2 - Question 1:
+
+select
+   Date_part('month', r.rental_date)Rental_month,
+   Date_part('year', r.rental_date)Rental_year,
+   s.store_id,
+   count(r.rental_id) Count_rentals 
+from
+   rental as r 
+   join
+      staff as st 
+      ON r.staff_id = st.staff_id 
+   join
+      store as s 
+      ON s.store_id = st.store_id 
+Group by
+   1,
+   2,
+   3 
+Order by
+   4 Desc
+______________________________________________________________________________________________
+
+Set 2 - Question 2:
+
+WITH top10 AS 
+(
+   SELECT
+      c.first_name || ' ' || c.last_name AS fullname,
+      SUM(p.amount) AS total_payments 
+   FROM
+      customer c 
+      JOIN
+         payment p 
+         ON p.customer_id = c.customer_id 
+   GROUP BY
+      fullname 
+   ORDER BY
+      total_payments DESC LIMIT 10 
+)
+SELECT
+   EXTRACT(month 
+FROM
+   p.payment_date) AS pay_mon,
+   c.first_name || ' ' || c.last_name AS fullname,
+   COUNT(p.amount) AS pay_countpermon,
+   SUM(p.amount) AS pay_amount 
+FROM
+   customer c 
+   JOIN
+      payment p 
+      ON p.customer_id = c.customer_id 
+WHERE
+   c.first_name || ' ' || c.last_name IN 
+   (
+      SELECT
+         fullname 
+      FROM
+         top10
+   )
+   AND 
+   (
+      EXTRACT(year 
+   FROM
+      p.payment_date) = '2007'
+   )
+GROUP BY
+   fullname,
+   pay_mon 
+ORDER BY
+   fullname,
+   pay_mon
+______________________________________________________________________________________________
+
+Set 2 - Question 3:
+
+WITH top10 AS 
+(
+   SELECT
+      c.customer_id,
+      SUM(p.amount) AS total_payments 
+   FROM
+      customer c 
+      JOIN
+         payment p 
+         ON p.customer_id = c.customer_id 
+   GROUP BY
+      c.customer_id 
+   ORDER BY
+      total_payments DESC LIMIT 10
+)
+,
+T AS 
+(
+   SELECT
+      Extract(month 
+   from
+      payment_date) AS pay_mon,
+      (
+         first_name || ' ' || last_name
+      )
+      AS fullname,
+      SUM(p.amount) AS pay_amount 
+   FROM
+      top10 
+      JOIN
+         customer c 
+         ON top10.customer_id = c.customer_id 
+      JOIN
+         payment p 
+         ON p.customer_id = c.customer_id 
+         AND 
+         (
+            EXTRACT(year 
+         FROM
+            p.payment_date) = '2007'
+         )
+   GROUP BY
+      fullname,
+      pay_mon 
+   ORDER BY
+      fullname,
+      pay_mon 
+)
+SELECT
+   *,
+   LAG(T.pay_amount) OVER (PARTITION BY fullname 
+ORDER BY
+   T.pay_amount) AS lag,
+   (
+      pay_amount - COALESCE(LAG(T.pay_amount) OVER (PARTITION BY fullname 
+   ORDER BY
+      T.pay_mon), 0)
+   )
+   AS maximum_difference 
+FROM
+   T 
+ORDER BY
+   maximum_difference DESC
